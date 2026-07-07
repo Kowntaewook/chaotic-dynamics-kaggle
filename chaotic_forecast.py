@@ -115,6 +115,9 @@ def read_one_file(path: Path, max_rows: int) -> pd.DataFrame:
     suffix = path.suffix.lower()
     if suffix == ".csv":
         df = pd.read_csv(path, nrows=max_rows)
+        if df.shape[1] == 1:
+            df = pd.read_csv(path, sep=r"\s+", header=None, nrows=max_rows, engine="python")
+            df.columns = [f"x{i}" for i in range(df.shape[1])]
     elif suffix == ".tsv":
         df = pd.read_csv(path, sep="\t", nrows=max_rows)
     elif suffix == ".parquet":
@@ -263,14 +266,18 @@ def split_train_test(
 ) -> tuple[list[pd.DataFrame], list[pd.DataFrame]]:
     train_groups: list[pd.DataFrame] = []
     test_groups: list[pd.DataFrame] = []
-    min_len = seq_len + horizon + 2
+    min_len = seq_len + horizon + 1
 
     for group in groups:
-        if len(group) < min_len * 2:
+        if len(group) < min_len:
             continue
-        cut = max(min_len, min(len(group) - min_len, int(len(group) * train_frac)))
+        cut = int(len(group) * train_frac)
+        cut = max(seq_len + horizon, cut)
+        cut = min(len(group) - horizon, cut)
+        if cut <= seq_len or cut >= len(group):
+            continue
         train_groups.append(group.iloc[:cut].copy())
-        test_groups.append(group.iloc[cut - seq_len - horizon + 1 :].copy())
+        test_groups.append(group.iloc[max(0, cut - seq_len) :].copy())
 
     if not train_groups or not test_groups:
         raise SystemExit(

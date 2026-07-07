@@ -1,74 +1,63 @@
-# Multi-System Chaotic Dynamics Dataset Example
+﻿# Chaotic Dynamics Kaggle Baseline
 
-This folder contains a baseline workflow for the Kaggle dataset:
+Kaggle의 Multi-System Chaotic Dynamics Dataset을 활용하여 3차원 상태 벡터의 다음 시점을 예측하는 GRU 기반 시계열 회귀 모델입니다.
 
-`namandixit07/multi-system-chaotic-dynamics-dataset`
+CNN은 사용하지 않았습니다. 본 프로젝트에서 사용하는 데이터는 이미지가 아니라 시간 순서에 따라 변화하는 벡터 데이터이므로, 순차 패턴을 학습할 수 있는 GRU 모델을 사용했습니다.
 
-The script does four things:
+## Dataset
 
-1. Downloads the dataset with `kagglehub`, or loads a local dataset folder.
-2. Finds CSV, TSV, Parquet, NumPy, NPZ, or MAT files.
-3. Builds sliding-window sequences from chaotic state variables.
-4. Trains a GRU model to predict the next state.
+- Kaggle dataset: namandixit07/multi-system-chaotic-dynamics-dataset
+- 사용 파일: embeddings_umap3d.csv
+- 사용 feature: UMAP_1, UMAP_2, UMAP_3
 
-## Install
+UMAP_1, UMAP_2, UMAP_3를 하나의 3차원 상태 벡터로 보고, 과거 32개 시점의 상태를 입력받아 다음 시점의 상태를 예측하도록 구성했습니다.
 
-```bash
-cd /workspace/chaotic_dynamics_kaggle
+## Model
+
+- 입력: 과거 32개 시점의 3차원 상태 벡터
+- 출력: 다음 시점의 3차원 상태 벡터
+- 모델: GRU
+- 손실 함수: MSE Loss
+- Optimizer: AdamW
+- 평가 지표: RMSE
+
+```text
+Input  shape: (batch, 32, 3)
+Output shape: (batch, 3)
+Install
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Run
 
-On Windows PowerShell:
+데이터 로딩 테스트:
 
-```powershell
-cd D:\path\to\chaotic_dynamics_kaggle
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
+.\.venv\Scripts\python.exe chaotic_forecast.py --no-train --file-glob embeddings_umap3d.csv --state-cols UMAP_1,UMAP_2,UMAP_3 --seq-len 32 --horizon 1
 
-## Run With Kaggle Download
+학습 실행:
 
-```bash
-python chaotic_forecast.py
-```
+.\.venv\Scripts\python.exe chaotic_forecast.py --file-glob embeddings_umap3d.csv --state-cols UMAP_1,UMAP_2,UMAP_3 --seq-len 32 --horizon 1 --epochs 10 --max-windows 30000
 
-If Kaggle asks for authentication, create an API token from your Kaggle account settings, then set it as KaggleHub expects.
+KaggleHub cache 직접 지정:
 
-## Run With A Manually Downloaded Folder
+.\.venv\Scripts\python.exe chaotic_forecast.py --data-dir "C:\Users\Administrator\.cache\kagglehub\datasets\namandixit07\multi-system-chaotic-dynamics-dataset\versions\19" --file-glob embeddings_umap3d.csv --state-cols UMAP_1,UMAP_2,UMAP_3 --seq-len 32 --horizon 1 --epochs 10 --max-windows 30000
+Training Result
+train windows: (3968, 32, 3)
+test windows : (1000, 32, 3)
+epoch 010/10 mse=1.000442
+overall RMSE: 4.077438
+Outputs
+FileDescription
+eda_summary.csvfeature별 기초 통계량
+trajectory_preview.png3차원 UMAP trajectory 시각화
+training_loss.pngepoch별 training loss 그래프
+forecast_preview.png실제값과 예측값 비교 그래프
+predictions_head.csv예측 결과 일부
+metrics.jsonRMSE 평가 결과
+gru_forecaster.pt학습된 PyTorch 모델 checkpoint
 
-```bash
-python chaotic_forecast.py --data-dir ./multi-system-chaotic-dynamics-dataset
-```
+outputs, .venv, 모델 checkpoint 파일은 .gitignore에 포함하여 GitHub에는 업로드하지 않습니다.
 
-## Recommended Explicit Run
+Summary
 
-If the dataset has columns like `system`, `t`, `x`, `y`, `z`, run:
-
-```bash
-python chaotic_forecast.py --system-col system --time-col t --state-cols x,y,z
-```
-
-If the column names are different, check the printed column summary and replace those names.
-
-## Useful Options
-
-```bash
-python chaotic_forecast.py --seq-len 128 --horizon 5 --epochs 50
-python chaotic_forecast.py --no-train
-python chaotic_forecast.py --max-rows 100000 --max-windows 50000
-```
-
-## Outputs
-
-Outputs are written to `outputs/`:
-
-- `eda_summary.csv`: basic numeric statistics
-- `trajectory_preview.png`: 2D/3D trajectory preview
-- `training_loss.png`: GRU training loss
-- `forecast_preview.png`: true vs predicted preview
-- `predictions_head.csv`: first prediction rows
-- `metrics.json`: RMSE scores
-- `gru_forecaster.pt`: trained PyTorch checkpoint
+이 프로젝트는 chaotic dynamics 형태의 3차원 embedding 데이터를 시계열 문제로 해석하고, GRU 모델을 이용해 다음 상태를 예측하는 baseline입니다. CNN 없이 순차 모델만 사용했으며, 학습 결과와 평가 지표를 outputs/metrics.json으로 확인할 수 있습니다.
